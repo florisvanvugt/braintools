@@ -9,13 +9,6 @@ model_name : "mymodel"
 seeds : [0,1,2,3,4]
 
 
-# How many contrasts are defined in your model
-n_contrasts : 2
-
-# How many f tests are defined in your model
-n_ftests : 0
-
-
 # The contrasts and f tests files used
 contrasts_file     : "//brains/audiomotor.mrs/analysis/cpac/modelspec/model_files_prepost_learning/prepost_learning.con"
 ftests_file        : None

@@ -275,7 +275,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     """
 
 
-    def get_contrast_dependencies(contrast_i):
+    def get_contrast_dependencies(contrast_def):
         """ 
         Given a particular contrast, return us the columns
         from the original phenotype table that this contrast
@@ -284,10 +284,6 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         Arguments
         contrast_i : the index of the contrast
         """
-        # Extract just that one contrast
-        mat           = info["contrast_mat"]
-        #design_matrix = info["design_mat"]
-        contrast_def = np.array(mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
 
         # Find the columns of the design matrix implicated in this contrast
         nonzerocols = [ info["design_mat_columns"][i] for i in np.where(contrast_def!=0)[0] ]
@@ -312,13 +308,17 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     #tab = {"subject":cl["subject.list"]}
     tab = pd.DataFrame(info["design_mat"])
     tab.columns = info["design_mat_columns"]
+    contrast_mat  = info["contrast_mat"]
 
     
     is_categorical = False
     if not is_f_test:
         
         contrast_i = stat_index-1
-        deps = get_contrast_dependencies(contrast_i)
+        # Extract just that one contrast
+        #design_matrix = info["design_mat"]
+        contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
+        deps = get_contrast_dependencies(contrast_def)
 
     else:
 
@@ -335,7 +335,10 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         deps = []
         for i in contrast_is:
             #print("Contrast %i"%i)
-            deps += get_contrast_dependencies(i,contrasts_mat)
+            #design_matrix = info["design_mat"]
+            contrast_def = np.array(contrast_mat[i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
+            
+            deps += get_contrast_dependencies(contrast_def)
         deps = list(set(deps))
 
 
@@ -354,7 +357,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             # Compute the actual contrast and show that
             EV_name = stat_name
             # Let's now add this to the design matrix
-            tab[EV_name]=np.array(np.dot(np.matrix(design_matrix),contrast_def)).flatten()
+            tab[EV_name]=np.array(np.dot(np.matrix(info["design_mat"]),contrast_def)).flatten()
 
         else:
             print("## Not sure what behavioural variable to plot for f-test %s"%stat_name)
@@ -487,10 +490,10 @@ if __name__=="__main__":
 
     
     # This is the file that we will write our html to
-    outputfile = gpa_dat["output_dir"]
-    if outputfile.endswith("/"):
-        outputfile=outputfile[:-1]
-    outputfile+=".html"
+    outputfile = os.path.join(gpa_dat["output_dir"],"sca_report.html")
+    #if outputfile.endswith("/"):
+    #    outputfile=outputfile[:-1]
+    #outputfile+=".html"
 
     htmlout=""
     
@@ -531,6 +534,7 @@ if __name__=="__main__":
     print(contrasts)
 
     gpa_dat["contrasts"]=contrasts
+    gpa_dat["n_contrasts"]=len(contrasts)
 
     # Read in the contrasts file
     with open(modelf,'r') as f:
@@ -613,10 +617,9 @@ if __name__=="__main__":
 
                 statname = ""
                 if stattype=="": # contrast
-                    statname=contrasts[j+1]
+                    statname=info["contrasts"][j+1]
                 elif stattype=="f": # F-test
-                    statname=f_tests[j+1] #"F-"+f_tests[j]
-
+                    statname=info["f_tests"][j+1] #"F-"+f_tests[j]
                     
 
                 # Make a rendering of the zmap (overlay)
@@ -638,42 +641,6 @@ if __name__=="__main__":
                                             "merged.file"   :merged_file,
                                             "statname"      :statname
                 })
-
-
-
-                    
-    if False:
-        if False:
-            if False:
-                clusterl     = "%s/stats/clusterMap/cluster_%s.txt"%(path,bodyname)
-                clustermask  = "%s/stats/clusterMap/cluster_mask_%s.nii.gz"%(path,bodyname)
-                renderednii  = "%s/rendered/thresh_z%sstat%i_overlay.nii.gz"%(path,stattype,j) 
-                #renderedf    = "%s/rendered/thresh_z%sstat%i_overlay.png"%(path,stattype,j) 
-
-                modeld = "%s/model_files"%path
-
-
-                if os.path.exists(clusterl):
-                    #print("Found cluster list %s"%clusterl)
-
-                    # Find the contrasts file associated with this analysis, parse it
-                    # to get the contrast and F-test names.
-                    modelf = None
-                    ftestf = None
-                    fs = os.listdir(modeld)
-                    for f in fs:
-                        if f.endswith(".con"):
-                            modelf = modeld+"/"+f
-                        if f.endswith('.fts'):
-                            ftestf = modeld+"/"+f
-                            
-                    with open(modelf,'r') as f:
-                        contf = f.read()
-                    contrasts = dict([ (int(x),n) for (x,n) in re.findall(r'/ContrastName(\d+)\s*([<>\.\w_\-\+]+)',contf)])
-                    f_tests   = dict([ (f+1   ,n) for (f,n) in enumerate(re.findall(r'[fF]_[tT][Ee][Ss][Tt]_?([<>\w\_\-\+]+)',contf)) ])
-
-                    HERE
-                    
 
 
 
