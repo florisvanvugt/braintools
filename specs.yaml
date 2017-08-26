@@ -17,14 +17,23 @@ design_matrix_file : "//brains/audiomotor.mrs/analysis/cpac/modelspec/model_file
 #file : "//brains/audiomotor.mrs/analysis/cpac/modelspec/model_files_prepost_learning/prepost_learning.mat"
 
 
-regressors : 'post_min_pre	behav_corr	_s03	_s04	_s05	_s07	_s08	_s09	_s10	_s11	_s12	_s13	_s14	_s15	_s16	_s17	_s18	_s19	_s20	_s21	_s22	_s23	_s24	_s25	_s26	_s27	_s28'
+regressors : 'post_min_pre	behav	_s03	_s04	_s05	_s07	_s08	_s09	_s10	_s11	_s12	_s13	_s14	_s15	_s16	_s17	_s18	_s19	_s20	_s21	_s22	_s23	_s24	_s25	_s26	_s27	_s28'
 
 
-ev_selections : {"categorical":[]} #['post_min_pre']} #,'behav_corr']
+# Which regressors are categorical
+ev_selections : {"categorical":['post_min_pre']} #['post_min_pre']} #,'behav_corr']
 
 # The phenotype file
 pheno_file : "/brains/audiomotor.mrs/analysis/cpac/pheno_audiomotor.csv"
 pheno_subject_column : "subject" # the name of the subject column in the pheno file
+
+
+# Which pheno column to plot for which contrast
+contrast2regr : {
+  #"post_min_pre+":"post_min_pre",
+  #"post_min_pre-":"post_min_pre",
+  #"
+} #"post_min_pre"}
 
 
 seed_dir : "seed_{seed_n}"
@@ -54,4 +63,4 @@ render_factor : 1
 
 template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz"
 
-image_width : 750
+image_width : 1000 # 750

@@ -17,3 +17,7 @@ Then run `python sca_nipype_reporter.py specs.yaml`.
 
 
 
+## TODO
+- [ ] Make this work for repeated-measures designs: each subject may have multiple datapoints (so multiple occurrences in the `merged` files).
+
+

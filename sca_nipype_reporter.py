@@ -298,8 +298,6 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                 mtc = re.match(r'C\((.+)\)\[(\d+)\]',col)
                 if mtc:
                     behavs.append(mtc.group(1))
-
-                
                 
         behavs = list(set(behavs)) # make unique
         return behavs
@@ -311,14 +309,15 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     contrast_mat  = info["contrast_mat"]
 
     
-    is_categorical = False
     if not is_f_test:
-        
+
         contrast_i = stat_index
         # Extract just that one contrast
         #design_matrix = info["design_mat"]
         contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
+        print(contrast_i,contrast_def)
         deps = get_contrast_dependencies(contrast_def)
+        print(deps)
 
     else:
 
@@ -342,7 +341,9 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         deps = list(set(deps))
 
 
+
         
+    is_categorical = False
     if len(deps)==1:
         # Great, we are good to go!
         behav = str(deps[0])
