@@ -314,7 +314,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     is_categorical = False
     if not is_f_test:
         
-        contrast_i = stat_index-1
+        contrast_i = stat_index
         # Extract just that one contrast
         #design_matrix = info["design_mat"]
         contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
@@ -328,7 +328,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
         ftest_mat = info["ftest_mat"]
         # Let's extract the contrasts that this f-test depends on...
-        fdef = np.array(ftest_mat[stat_index-1]).flatten()
+        fdef = np.array(ftest_mat[stat_index]).flatten()
         contrast_is, = np.where( fdef!=0 )
         #print("%s depends on contrasts"%stat_name,contrast_is)
 
@@ -407,7 +407,6 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         ax = fig.add_subplot(111)
         ax.plot(tab[EV_name],tab["mean"],'o',color=color)
     else:
-
             
         fig = plt.figure(figsize=(7,7))
         ax = fig.add_subplot(111)
