@@ -308,13 +308,16 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     tab.columns = info["design_mat_columns"]
 
     for col in info["design_rows"].columns:
-        assert col not in tab.columns # we don't want to overwrite any columns
+        assert col not in tab.columns # make sure the columns in the design_rows file don't overlap with those in the design matrix
         tab[col]=info["design_rows"][col]
 
 
     contrast_mat  = info["contrast_mat"]
+    #contrast_i = stat_index # TODO -- different for f tests
+    #contrast_def = np.array(contrast_mat[contrast_i]).flatten()
+    #tab[stat_name] = contrast_def # add the contrast to the design matrix (so we can use it later in computation)
 
-
+    
     for valtype in ["mean","min","max","median"]:
 
         cmd = ["3dmaskave",
@@ -330,146 +333,144 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         result = subprocess.check_output(cmd) #, stdout=subprocess.PIPE)
         tb = [ float(f) for f in str(result).split() ]
         assert len(tb)==tab.shape[0] #len(cl["subject.list"])
+
+        assert valtype not in tab.columns # any of the valtypes should not already exist in the design matrix
         tab[valtype] = tb
 
 
 
 
+    # Now we will make a set of plots that will appear next to
+    # the cluster rendering.
+    returnplots = []
+    for plotdef in info["cluster_accompany_plots"]:
 
+        # Make a copy of the cluster file we have so far
+        plottab = tab.copy()
+        
+        # The variable that is supposed to go on the x axis
+        EV_name = plotdef["x"]
 
-    
-    if not is_f_test:
-
-        #contrast_i = stat_index
-        # Extract just that one contrast
-        #design_matrix = info["design_mat"]
-        #contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
-        #print(contrast_i,contrast_def)
-        #deps = get_contrast_dependencies(contrast_def)
-        #print(deps)
-
-        # The variable to plot here is "dep"
-        EV_name = info["contrast2regr"][stat_name]
-
+        # Make sure we have access to this column
         if EV_name in info["design_rows"].columns:
-            pass # nothing to do, should aldready have been added
+            pass
 
+            
         elif EV_name in info["pheno"].columns:
-            pass # TODO: probably some averaging needs to be done!
+
+            # Merge the column into question onto the cluster result file
+            subj_id = info["subject_id_column"]
+            cols = [subj_id,EV_name]
+            plottab = pd.merge(plottab,info["pheno"][cols],how='left',on=subj_id)
 
         else:
             print("# Error ! Not sure where to find column '%s'#"%EV_name)
+
+        # Check whether the variable is categorical
+        is_categorical = EV_name in info["ev_selections"].get("categorical",[])
+
+
+            
+
+        # Now determine what should go on the y axis
         
-        #subj_id = info["subject_id_column"]
-        #cols = [subj_id,EV_name]
-        
-        #additions = info["design_rows"][cols]
+        dep_name = plotdef["y"] # the dependent variable
 
-        #print(tab)
-        #print(additions)
-        #tab = pd.merge(tab,
-        #               additions,
-        #               how="left",
-        #               on=subj_id) # how="left" is important because we need to preserve key order
-
-        ## Great, we are good to go!
-        #behav = str(deps[0])
-        #tab[behav] = info["pheno"][behav]
-        #EV_name = behav
-
-    else:
-        pass
-    
-        
-
-    if False:
-        if not is_f_test:
-            # Compute the actual contrast and show that
-            EV_name = stat_name
-            # Let's now add this to the design matrix
-            tab[EV_name]=np.array(np.dot(np.matrix(info["design_mat"]),contrast_def)).flatten()
+        # Apply the contrast to the mean cluster values
+        if dep_name==None or dep_name=="None":
+            plottab["--y--"] = plottab["mean"] # kind of "evaluate" the contrast for this cluster
+            ylabel = "FC"
 
         else:
-            print("## Not sure what behavioural variable to plot for f-test %s"%stat_name)
-            return {'table':pd.DataFrame({}),'png':""} #,"cluster.rendering":clusterrender}
+            # Now we should do a merge step: since this comes from the pheno type file we know
+            # we have only one value per subject. So plotting the multiple values per subject
+            # doesn't really make sense (I think). So what we'll do is collapse across multiple
+            # instances per subject. What do we collapse? This is determined by the contrast.
+
+            subj_id = info["subject_id_column"]
+            plottab["--evald--"] = plottab["mean"]*plottab[dep_name] # kind of "evaluate" the design matrix column for this cluster
+            aggr = plottab.groupby([subj_id]).agg({'--evald--':np.mean}).reset_index() # collapse across multiple values per subject, taking the mean for the evaluated column
+            #print(aggr)
+            aggr["--y--"]=aggr["--evald--"]# ["mean"]?
+            aggr = pd.merge(aggr,info["pheno"],how='left',on=subj_id)
+            plottab = aggr
+            ylabel = "FC %s"%dep_name
+
+
+        
+            
+        # Collapse across subjects, maybe?
         
 
-    is_categorical = EV_name in info["ev_selections"].get("categorical",[])
+        assert not is_f_test # TODO will need to deal with F tests later
 
 
 
-        
-    #df = pd.DataFrame(tab)
-    tab = tab.reset_index()
-    #print(tab)
 
-    
 
-    # So that gives us for every subject the connectivity values within that cluster.
-    # Now the question is how that relates to their EVs.
-    # What we have is a contrast, so for each subject we can calculate the value
-    # of the contrast, e.g. if the contrast is EV1>EV2 then we can calculate EV1-EV2
-    # which is the relevant value to plot in a scatter plot.
+        #df = pd.DataFrame(tab)
+        plottab = plottab.reset_index()
+        print(plottab)
 
-    # Okay, now a little hack -- TODO: make this proper, compute the actual contrast value...
-    # For now, we just find the regressor with the most appropriate looking name
-    #behav = ""
-    #regressors = list(design_matrix.columns.values)
-    #for regr in regressors:
-    #    if contrast.find(regr)>-1: # if this contains the regressor
-    #        behav = regr
 
-    # Now let's plot this
-    if not USE_SEABORN:
-        fig = plt.figure(figsize=(7,7))
-        ax = fig.add_subplot(111)
-        ax.plot(tab[EV_name],tab["mean"],'o',color=color)
-    else:
-            
-        fig = plt.figure(figsize=(7,7))
-        ax = fig.add_subplot(111)
-        if is_categorical:
-            i = 0
-            labels = []
 
-            # TODO -- connect the lines by subject?
-            for nm,dat in tab.groupby(EV_name):
-                #print("Grouping",i,dat)
-                plotvals = dat["mean"]
-                mn = np.mean(plotvals)
-                ax.bar(i+.1,mn,color=color,alpha=.3)
-                labels.append(nm)
+        # So that gives us for every subject the connectivity values within that cluster.
+        # Now the question is how that relates to their EVs.
+        # What we have is a contrast, so for each subject we can calculate the value
+        # of the contrast, e.g. if the contrast is EV1>EV2 then we can calculate EV1-EV2
+        # which is the relevant value to plot in a scatter plot.
 
-                ax.plot([i+.5]*len(plotvals),plotvals,'o',color=color)
-                i+=1
-            ax.set_xticks([ i+.5 for i in range(len(labels)) ])
-            ax.set_xticklabels(labels)
-            ax.set_xlim(0,i+1)
-            
+        if not USE_SEABORN: # not sure if this works though
+            fig = plt.figure(figsize=(7,7))
+            ax = fig.add_subplot(111)
+            ax.plot(plottab[EV_name],plottab["--y--"],'o',color=color)
         else:
-            sns.regplot(tab[EV_name],tab["mean"],color=color,ax=ax)
 
-    # If the values cross zero, add a zero line
-    minm,maxm= min(tab["mean"]),max(tab["mean"])
-    # TODO -- fix below
-    #if np.sign(minm)!=np.sign(maxm):
-    #    plt.plot(tab[EV_name],[0]*len(tab[EV_name]),'-',color="gray",alpha=.5)
+            fig = plt.figure(figsize=(7,7))
+            ax = fig.add_subplot(111)
+            if is_categorical:
+                i = 0
+                labels = []
 
-    #for i,row in tab.iterrows():
-    #    ax.text(row[EV_name],row["mean"],row[info["pheno_subject_column"]],fontsize=8,alpha=.5)
-    # TODO -- fix
-    
-    sns.despine(offset=5)
-    ax.set_title(label)
-    ax.set_xlabel(EV_name)
-    ax.set_ylabel("FC")
-    plt.tight_layout()
-    fig.savefig('/tmp/sca.png',dpi=75)
-    plt.close()
-    encoded = base64.b64encode(open('/tmp/sca.png', "rb").read())
+                # TODO -- connect the lines by subject?
+                for nm,dat in plottab.groupby(EV_name):
+                    #print("Grouping",i,dat)
+                    plotvals = dat["--y--"]
+                    mn = np.mean(plotvals)
+                    ax.bar(i+.1,mn,color=color,alpha=.3)
+                    labels.append(nm)
 
+                    ax.plot([i+.5]*len(plotvals),plotvals,'o',color=color)
+                    i+=1
+                ax.set_xticks([ i+.5 for i in range(len(labels)) ])
+                ax.set_xticklabels(labels)
+                ax.set_xlim(0,i+1)
 
-    return {'table':tab,'png':encoded} #,"cluster.rendering":clusterrender}
+            else:
+                sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax)
+
+        # If the values cross zero, add a zero line
+        minm,maxm= min(plottab["--y--"]),max(plottab["--y--"])
+        # TODO -- fix below
+        #if np.sign(minm)!=np.sign(maxm):
+        #    plt.plot(tab[EV_name],[0]*len(tab[EV_name]),'-',color="gray",alpha=.5)
+
+        #for i,row in tab.iterrows():
+        #    ax.text(row[EV_name],row["mean"],row[info["pheno_subject_column"]],fontsize=8,alpha=.5)
+        # TODO -- fix
+
+        sns.despine(offset=5)
+        ax.set_title(label)
+        ax.set_xlabel(EV_name)
+        ax.set_ylabel(ylabel)
+        plt.tight_layout()
+        fig.savefig('/tmp/sca.png',dpi=75)
+        plt.close()
+        encoded = base64.b64encode(open('/tmp/sca.png', "rb").read())
+
+        returnplots.append({'table':tab,'png':encoded})  #,"cluster.rendering":clusterrender})
+        
+    return returnplots
 
 
 
@@ -546,7 +547,7 @@ if __name__=="__main__":
     # rows are the different contrasts
     gpa_dat["design_mat"]=designmat
 
-    gpa_dat["design_mat_columns"]= gpa_dat["regressors"].split()
+    gpa_dat["design_mat_columns"]= gpa_dat["regressors"]
 
     # Read the file that tells us for each row in the design matrix what the factor levels are for that row.
     gpa_dat["design_rows"] = pd.DataFrame.from_csv(gpa_dat["design_rows_file"]).reset_index()
@@ -699,7 +700,6 @@ if True:
 
                 clusterrender = make_cluster_rendering(cl["cluster.mask"],cluster_n+1,colours[cluster_n],info)
 
-
                 clsc = make_cluster_scatter(clustermaskf = cl["cluster.mask"],
                                             cluster_n    = cluster_n+1,
                                             mergedf      = cl["merged.file"],
@@ -711,9 +711,10 @@ if True:
                                             color         = colours[cluster_n]
                 )
 
-                clsc["cluster.rendering"]=clusterrender
+                #clsc["cluster.rendering"]=clusterrender
 
-                cl["persubject"][cluster_n+1]=clsc
+                cl["persubject"][cluster_n+1]={"cluster.rendering":clusterrender,
+                                               "accompany.plots":clsc}
 
 
 
@@ -825,7 +826,9 @@ if True:
                         htmlout+="</span>"
                         
                     #print("<p>Cluster %i - subject values %s"%(cli,cl["persubject"][cli]))
-                    htmlout+="<p><table><tr><td><img src=\"data:image/png;base64,%s\" /></td>\n"%cl["persubject"][cli]["png"]
+                    htmlout+="<p><table><tr>"
+                    for plot in cl["persubject"][cli]["accompany.plots"]:
+                        htmlout+="<td><img src=\"data:image/png;base64,%s\" /></td>\n"%plot["png"]
                     htmlout+="<td><img style=\"width : 600; height:auto\" src=\"data:image/png;base64,%s\" /></td></tr></table>\n"%cl["persubject"][cli]["cluster.rendering"]
 
 

@@ -6,7 +6,7 @@ output_dir : "/brains/audiomotor.mrs/analysis/cpac/modelspec/output"
 model_name : "mymodel"
 
 # The seeds in question
-seeds : [0,1,2,3,4]
+seeds : [0] #[0,1,2,3,4]
 
 
 # The contrasts and f tests files used
@@ -25,11 +25,11 @@ design_rows_file : "/brains/audiomotor.mrs/analysis/cpac/modelspec/row_template.
 
 
 # The columns of the design matrix
-regressors : 'post_min_pre	behav	_s03	_s04	_s05	_s07	_s08	_s09	_s10	_s11	_s12	_s13	_s14	_s15	_s16	_s17	_s18	_s19	_s20	_s21	_s22	_s23	_s24	_s25	_s26	_s27	_s28'
+regressors : ['post_min_pre_regr','behav','_s03','_s04','_s05','_s07','_s08','_s09','_s10','_s11','_s12','_s13','_s14','_s15','_s16','_s17','_s18','_s19','_s20','_s21','_s22','_s23','_s24','_s25','_s26','_s27','_s28']
 
 
 # Which regressors (from the design matrix) or factors from the design_rows_file are categorical
-ev_selections : {"categorical":['post_min_pre','timepoint']} #['post_min_pre']} #,'behav_corr']
+ev_selections : {"categorical":['post_min_pre_regr','timepoint']} #['post_min_pre']} #,'behav_corr']
 
 # The phenotype file
 pheno_file : "/brains/audiomotor.mrs/analysis/cpac/pheno_audiomotor.csv"
@@ -39,6 +39,18 @@ subject_id_column : "subject"
 
 
 
+# Define the plots we will make next to each cluster
+# Each item defines one plot. The way to define the plot is with a dict which has various keys.
+# The "x" key of the plot determines which variable goes on the x-axis. It can be from the
+# phenotype file (in which case we will collapse across multiple entries per subject)
+# or from the design_rows_file.
+# The "y" key determines what regressor we show on the y axis, where None means showing just the value of the cluster
+cluster_accompany_plots : 
+  - {"x":"timepoint",   "y":None}
+  - {"x":"post_min_pre","y":"post_min_pre_regr"}
+
+
+  
 # Which pheno/design_rows column to plot for which contrast
 contrast2regr : {
   "post_min_pre+":"timepoint",
