@@ -154,19 +154,23 @@ def make_zmap_rendering(thresh_stat_overlay,info):
     A base64-encoded string of the image
     """
 
-    image_width = info["image_width"]
+    image_width   = info["image_width"]
     RENDER_FACTOR = info["render_factor"]
     
     print("Making zmap %s"%thresh_stat_overlay)
-    tmp_image    = "/tmp/_overlay.png"
-    img_output = "/tmp/overlay.png"
+    tmp_image     = "/tmp/_overlay.png"
+    img_output    = "/tmp/overlay.png"
+
+    thresh_stat_overlay = os.path.abspath(thresh_stat_overlay)
+    assert os.path.exists(thresh_stat_overlay)
     
     # Then produce an image rendition of this overlay
     cmd = ["slicer",thresh_stat_overlay,
-           #"-l",lut,
+           #"-l",lut, --- TODO there is something wrong here with the look-up table for colours
            "-S",str(RENDER_FACTOR),str(image_width*RENDER_FACTOR),
            tmp_image
     ]
+    print(" ".join(cmd))
     subprocess.call(cmd)
 
     # Now convert the image back to a usable size
@@ -193,6 +197,9 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     A base64-encoded string of the image
     """
 
+    clusterfile = os.path.abspath(clusterfile)
+    assert os.path.exists(clusterfile)
+    
     image_width   = info["cluster_image_width"]
     render_width  = info["render_width"]
     RENDER_FACTOR = info["render_factor"]
@@ -202,8 +209,8 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     # Define some temporary files
     cluster_only  = "/tmp/cluster_only.nii.gz"
     overlay       = "/tmp/zstat_overlay.nii.gz" # file that will be created in this process
-    tmp_image     = "/tmp/tmp.png" # image file, the actual output that we care about
-    overlay_image = "/tmp/cluster_overlay.png" # image file, the actual output that we care about
+    tmp_image     = "/tmp/tmp.png"              # image file, the actual output that we care about
+    overlay_image = "/tmp/cluster_overlay.png"  # image file, the actual output that we care about
 
     # Remove any previous files so that we don't accidentally produce the same figure
     subprocess.call(['rm','-f',overlay_image,overlay,cluster_only,tmp_image])
@@ -214,6 +221,8 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
            "-prefix",cluster_only]
     subprocess.call(cmd)
 
+    assert os.path.exists(cluster_only)
+    
     ## See e.g. https://faculty.washington.edu/madhyt/2016/12/10/180/
     cmd = ["overlay","0","0",template,"-a",
            cluster_only,"1","1",#str(cluster_n-.001),str(cluster_n+.001),
@@ -221,6 +230,8 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     #print(" ".join(cmd))
     subprocess.call(cmd)
 
+    assert os.path.exists(overlay)
+    
     # Then produce an image rendition of this
     cmd = ["slicer",overlay,
            #"-L",
@@ -378,7 +389,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
         subj_id = info["subject_id_column"]
 
-            
+
 
         # Now determine what should go on the y axis
         
@@ -433,7 +444,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             ax.plot(plottab[EV_name],plottab["--y--"],'o',color=color)
         else:
 
-            fig = plt.figure(figsize=(7,7))
+            fig = plt.figure(figsize=(6,6))
             ax = fig.add_subplot(111)
             if is_categorical:
                 labels = {}
@@ -456,9 +467,13 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                         plotvals = dat["--y--"]
                         ax.plot([labels[nm] for nm in dat[EV_name]],
                                 plotvals,'-o',color=color)
+                        lastval = list(plotvals)[-1]
+                        lastx   = labels[ list(dat[EV_name])[-1] ]
+                        ax.text(lastx,lastval,subj,fontsize=8,alpha=.5)
                     else: # plotting non-categorical data
                         plotvals = dat["--y--"]
                         ax.plot(dat[EV_name],plotvals,'o',color=color)
+                        ax.text(dat[EV_name],plotvals,[subj],fontsize=11,alpha=.5)
                         
                 if is_categorical:
                     lbls = list(labels.keys())
@@ -467,7 +482,9 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                     ax.set_xlim(0,len(lbls))
 
             else:
-                sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax)
+                sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax,scatter_kws={'s':8})
+                for i,row in plottab.iterrows():
+                    ax.text(row[EV_name],row["--y--"],row[subj_id],fontsize=8,alpha=.5)
 
         # If the values cross zero, add a zero line
         minm,maxm= min(plottab["--y--"]),max(plottab["--y--"])
