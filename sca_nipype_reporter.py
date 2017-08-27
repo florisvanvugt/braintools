@@ -9,7 +9,13 @@ import pandas as pd
 import base64
 import subprocess
 import sys
-import StringIO
+
+#py3
+#import io
+#StringIO = io.StringIO # py3
+
+#py2
+import StringIO # py2
 
 import numpy as np
 import matplotlib as mpl
@@ -370,6 +376,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         # Check whether the variable is categorical
         is_categorical = EV_name in info["ev_selections"].get("categorical",[])
 
+        subj_id = info["subject_id_column"]
 
             
 
@@ -388,7 +395,6 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             # doesn't really make sense (I think). So what we'll do is collapse across multiple
             # instances per subject. What do we collapse? This is determined by the contrast.
 
-            subj_id = info["subject_id_column"]
             plottab["--evald--"] = plottab["mean"]*plottab[dep_name] # kind of "evaluate" the design matrix column for this cluster
             aggr = plottab.groupby([subj_id]).agg({'--evald--':np.sum}).reset_index() # collapse across multiple values per subject, taking the sum of the evaluated column (because we are evaluating the design column here)
             #print(aggr)
@@ -430,22 +436,35 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             fig = plt.figure(figsize=(7,7))
             ax = fig.add_subplot(111)
             if is_categorical:
-                i = 0
-                labels = []
+                labels = {}
 
                 # TODO -- connect the lines by subject?
-                for nm,dat in plottab.groupby(EV_name):
-                    #print("Grouping",i,dat)
-                    plotvals = dat["--y--"]
-                    mn = np.mean(plotvals)
-                    ax.bar(i+.1,mn,color=color,alpha=.3)
-                    labels.append(nm)
+                # TODO -- probably do this grouping only if it's categorical
 
-                    ax.plot([i+.5]*len(plotvals),plotvals,'o',color=color)
-                    i+=1
-                ax.set_xticks([ i+.5 for i in range(len(labels)) ])
-                ax.set_xticklabels(labels)
-                ax.set_xlim(0,i+1)
+                if is_categorical: # plot a bar
+                    i=0
+                    for nm,thisev in plottab.groupby(EV_name):
+                        plotvals = thisev["--y--"]
+                        mn = np.mean(plotvals)
+                        ax.bar(i+.1,mn,color=color,alpha=.3)
+                        labels[nm]=i+.5
+                        i+=1
+                
+                for subj,dat in plottab.groupby(subj_id):
+
+                    if is_categorical:
+                        plotvals = dat["--y--"]
+                        ax.plot([labels[nm] for nm in dat[EV_name]],
+                                plotvals,'-o',color=color)
+                    else: # plotting non-categorical data
+                        plotvals = dat["--y--"]
+                        ax.plot(dat[EV_name],plotvals,'o',color=color)
+                        
+                if is_categorical:
+                    lbls = list(labels.keys())
+                    ax.set_xticks([ labels[l] for l in lbls ])
+                    ax.set_xticklabels(lbls)
+                    ax.set_xlim(0,len(lbls))
 
             else:
                 sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax)

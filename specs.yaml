@@ -3,7 +3,7 @@
 # The root directory where your data files are (all paths are assumed to be relative to this folder)
 output_dir : "/brains/audiomotor.mrs/analysis/cpac/modelspec/output"
 
-model_name : "mymodel"
+model_name : "Audiomotor MRS"
 
 # The seeds in question
 seeds : [0,1,2,3,4]
