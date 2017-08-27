@@ -6,7 +6,7 @@ output_dir : "/brains/audiomotor.mrs/analysis/cpac/modelspec/output"
 model_name : "mymodel"
 
 # The seeds in question
-seeds : [0] #[0,1,2,3,4]
+seeds : [0,1,2,3,4]
 
 
 # The contrasts and f tests files used
@@ -86,6 +86,15 @@ rendered_nii : "rendered/_overlay{contrast}/thresh_zstat{contrast+1}_overlay.nii
 # image larger at first and then use imagemagick to scale it down.
 render_factor : 1
 
+# The width of the slicer image
+render_width : 1500 
+
 template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz"
 
+# The converted image width (as will be shown in the html)
+cluster_image_width : 1000 # 750
+
+# The converted image width (as will be shown in the html)
 image_width : 1000 # 750
+
+

@@ -187,7 +187,8 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     A base64-encoded string of the image
     """
 
-    image_width   = info["image_width"]
+    image_width   = info["cluster_image_width"]
+    render_width  = info["render_width"]
     RENDER_FACTOR = info["render_factor"]
     template      = info["template"]
     lut = make_lut(colour,greyscale=.4)
@@ -219,7 +220,7 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
            #"-L",
            "-l",lut,
            #"-A",str(image_width*RENDER_FACTOR),#"750",
-           "-S",str(RENDER_FACTOR),str(image_width*RENDER_FACTOR),#"750",
+           "-S",str(RENDER_FACTOR),str(render_width),#"750",
            tmp_image
     ]
 
@@ -410,7 +411,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
         #df = pd.DataFrame(tab)
         plottab = plottab.reset_index()
-        print(plottab)
+        #print(plottab)
 
 
 
