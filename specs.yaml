@@ -17,21 +17,34 @@ design_matrix_file : "//brains/audiomotor.mrs/analysis/cpac/modelspec/model_file
 #file : "//brains/audiomotor.mrs/analysis/cpac/modelspec/model_files_prepost_learning/prepost_learning.mat"
 
 
+# A table that has the same number of rows as the design matrix,
+# and any number of columns indicating values of the subject and other factors 
+# for each row in question.
+# (This will be merged onto subject tables using the subject ID column)
+design_rows_file : "/brains/audiomotor.mrs/analysis/cpac/modelspec/row_template.csv"
+
+
+# The columns of the design matrix
 regressors : 'post_min_pre	behav	_s03	_s04	_s05	_s07	_s08	_s09	_s10	_s11	_s12	_s13	_s14	_s15	_s16	_s17	_s18	_s19	_s20	_s21	_s22	_s23	_s24	_s25	_s26	_s27	_s28'
 
 
-# Which regressors are categorical
-ev_selections : {"categorical":['post_min_pre']} #['post_min_pre']} #,'behav_corr']
+# Which regressors (from the design matrix) or factors from the design_rows_file are categorical
+ev_selections : {"categorical":['post_min_pre','timepoint']} #['post_min_pre']} #,'behav_corr']
 
 # The phenotype file
 pheno_file : "/brains/audiomotor.mrs/analysis/cpac/pheno_audiomotor.csv"
-pheno_subject_column : "subject" # the name of the subject column in the pheno file
+
+# the name of the subject column in the pheno file and in the design_rows file
+subject_id_column : "subject" 
 
 
-# Which pheno column to plot for which contrast
+
+# Which pheno/design_rows column to plot for which contrast
 contrast2regr : {
-  #"post_min_pre+":"post_min_pre",
-  #"post_min_pre-":"post_min_pre",
+  "post_min_pre+":"timepoint",
+  "post_min_pre-":"timepoint",
+  "behav-":"post_min_pre",
+  "behav+":"post_min_pre",
   #"
 } #"post_min_pre"}
 

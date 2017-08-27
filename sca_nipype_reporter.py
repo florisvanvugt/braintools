@@ -306,66 +306,14 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
     #tab = {"subject":cl["subject.list"]}
     tab = pd.DataFrame(info["design_mat"])
     tab.columns = info["design_mat_columns"]
+
+    for col in info["design_rows"].columns:
+        assert col not in tab.columns # we don't want to overwrite any columns
+        tab[col]=info["design_rows"][col]
+
+
     contrast_mat  = info["contrast_mat"]
 
-    
-    if not is_f_test:
-
-        contrast_i = stat_index
-        # Extract just that one contrast
-        #design_matrix = info["design_mat"]
-        contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
-        print(contrast_i,contrast_def)
-        deps = get_contrast_dependencies(contrast_def)
-        print(deps)
-
-    else:
-
-        if ftestf==None:
-            print("Error, no ftest file for %s"%stat_name)
-            exit()
-
-        ftest_mat = info["ftest_mat"]
-        # Let's extract the contrasts that this f-test depends on...
-        fdef = np.array(ftest_mat[stat_index]).flatten()
-        contrast_is, = np.where( fdef!=0 )
-        #print("%s depends on contrasts"%stat_name,contrast_is)
-
-        deps = []
-        for i in contrast_is:
-            #print("Contrast %i"%i)
-            #design_matrix = info["design_mat"]
-            contrast_def = np.array(contrast_mat[i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
-            
-            deps += get_contrast_dependencies(contrast_def)
-        deps = list(set(deps))
-
-
-
-        
-    is_categorical = False
-    if len(deps)==1:
-        # Great, we are good to go!
-        behav = str(deps[0])
-        tab[behav] = info["pheno"][behav]
-        EV_name = behav
-
-        is_categorical = behav in info["ev_selections"].get("categorical",[])
-
-    else:
-
-        if not is_f_test:
-            # Compute the actual contrast and show that
-            EV_name = stat_name
-            # Let's now add this to the design matrix
-            tab[EV_name]=np.array(np.dot(np.matrix(info["design_mat"]),contrast_def)).flatten()
-
-        else:
-            print("## Not sure what behavioural variable to plot for f-test %s"%stat_name)
-            return {'table':pd.DataFrame({}),'png':""} #,"cluster.rendering":clusterrender}
-        
-
-    
 
     for valtype in ["mean","min","max","median"]:
 
@@ -384,9 +332,78 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         assert len(tb)==tab.shape[0] #len(cl["subject.list"])
         tab[valtype] = tb
 
+
+
+
+
+
+    
+    if not is_f_test:
+
+        #contrast_i = stat_index
+        # Extract just that one contrast
+        #design_matrix = info["design_mat"]
+        #contrast_def = np.array(contrast_mat[contrast_i]).flatten() # list of the multipliers of the design matrix columns to find the contrast for each subject
+        #print(contrast_i,contrast_def)
+        #deps = get_contrast_dependencies(contrast_def)
+        #print(deps)
+
+        # The variable to plot here is "dep"
+        EV_name = info["contrast2regr"][stat_name]
+
+        if EV_name in info["design_rows"].columns:
+            pass # nothing to do, should aldready have been added
+
+        elif EV_name in info["pheno"].columns:
+            pass # TODO: probably some averaging needs to be done!
+
+        else:
+            print("# Error ! Not sure where to find column '%s'#"%EV_name)
+        
+        #subj_id = info["subject_id_column"]
+        #cols = [subj_id,EV_name]
+        
+        #additions = info["design_rows"][cols]
+
+        #print(tab)
+        #print(additions)
+        #tab = pd.merge(tab,
+        #               additions,
+        #               how="left",
+        #               on=subj_id) # how="left" is important because we need to preserve key order
+
+        ## Great, we are good to go!
+        #behav = str(deps[0])
+        #tab[behav] = info["pheno"][behav]
+        #EV_name = behav
+
+    else:
+        pass
+    
+        
+
+    if False:
+        if not is_f_test:
+            # Compute the actual contrast and show that
+            EV_name = stat_name
+            # Let's now add this to the design matrix
+            tab[EV_name]=np.array(np.dot(np.matrix(info["design_mat"]),contrast_def)).flatten()
+
+        else:
+            print("## Not sure what behavioural variable to plot for f-test %s"%stat_name)
+            return {'table':pd.DataFrame({}),'png':""} #,"cluster.rendering":clusterrender}
+        
+
+    is_categorical = EV_name in info["ev_selections"].get("categorical",[])
+
+
+
+        
     #df = pd.DataFrame(tab)
     tab = tab.reset_index()
+    #print(tab)
 
+    
 
     # So that gives us for every subject the connectivity values within that cluster.
     # Now the question is how that relates to their EVs.
@@ -412,18 +429,31 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         fig = plt.figure(figsize=(7,7))
         ax = fig.add_subplot(111)
         if is_categorical:
-            for i,dat in tab.groupby(EV_name):
-                mn = np.mean(dat["mean"])
-                ax.bar(i,mn,color=color,alpha=.3)
+            i = 0
+            labels = []
+
+            # TODO -- connect the lines by subject?
+            for nm,dat in tab.groupby(EV_name):
+                #print("Grouping",i,dat)
+                plotvals = dat["mean"]
+                mn = np.mean(plotvals)
+                ax.bar(i+.1,mn,color=color,alpha=.3)
+                labels.append(nm)
+
+                ax.plot([i+.5]*len(plotvals),plotvals,'o',color=color)
+                i+=1
+            ax.set_xticks([ i+.5 for i in range(len(labels)) ])
+            ax.set_xticklabels(labels)
+            ax.set_xlim(0,i+1)
             
-            ax.plot(tab[EV_name],tab["mean"],'o',color=color)
         else:
             sns.regplot(tab[EV_name],tab["mean"],color=color,ax=ax)
 
     # If the values cross zero, add a zero line
     minm,maxm= min(tab["mean"]),max(tab["mean"])
-    if np.sign(minm)!=np.sign(maxm):
-        plt.plot(tab[EV_name],[0]*len(tab[EV_name]),'-',color="gray",alpha=.5)
+    # TODO -- fix below
+    #if np.sign(minm)!=np.sign(maxm):
+    #    plt.plot(tab[EV_name],[0]*len(tab[EV_name]),'-',color="gray",alpha=.5)
 
     #for i,row in tab.iterrows():
     #    ax.text(row[EV_name],row["mean"],row[info["pheno_subject_column"]],fontsize=8,alpha=.5)
@@ -517,6 +547,9 @@ if __name__=="__main__":
     gpa_dat["design_mat"]=designmat
 
     gpa_dat["design_mat_columns"]= gpa_dat["regressors"].split()
+
+    # Read the file that tells us for each row in the design matrix what the factor levels are for that row.
+    gpa_dat["design_rows"] = pd.DataFrame.from_csv(gpa_dat["design_rows_file"]).reset_index()
 
 
     subject_list_file      = os.path.join(get_path("output_dir",gpa_dat),get_path("subject_list_file",gpa_dat))
