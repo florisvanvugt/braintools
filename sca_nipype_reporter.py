@@ -390,7 +390,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
             subj_id = info["subject_id_column"]
             plottab["--evald--"] = plottab["mean"]*plottab[dep_name] # kind of "evaluate" the design matrix column for this cluster
-            aggr = plottab.groupby([subj_id]).agg({'--evald--':np.mean}).reset_index() # collapse across multiple values per subject, taking the mean for the evaluated column
+            aggr = plottab.groupby([subj_id]).agg({'--evald--':np.sum}).reset_index() # collapse across multiple values per subject, taking the sum of the evaluated column (because we are evaluating the design column here)
             #print(aggr)
             aggr["--y--"]=aggr["--evald--"]# ["mean"]?
             aggr = pd.merge(aggr,info["pheno"],how='left',on=subj_id)
