@@ -113,3 +113,6 @@ aux_files : ["/brains/audiomotor.mrs/analysis/cpac/seed_regions/seeds.png"]
 # The HTML output file
 html_output : "sca_{model_name}.html"
 
+# Set to None if you don't want to gather output, otherwise this is the directory where nifti's will be gathered
+gather_dir : "gathered"
+

@@ -939,7 +939,14 @@ if True:
 
                 #fullp = "%s/stats/threshold/thresh_%s.nii.gz"%(cl["path"],cl["body"])
                 #fullp = "%s/%s/rendered/thresh_%s_overlay.nii.gz"%(cwd,cl["path"],cl["body"])
-                cmd = "fsleyes %s --name MNI152_T1 --brightness 40 %s -n \"seed %i %s %s\" --cmap red-yellow"%(gpa_dat["fsleyes_template"],cl["thresh_zmap"],cl["seed"],cl["seed.label"],cl["statname"])
+                zmap_nii     = cl["thresh_zmap"]
+                template_nii = gpa_dat["fsleyes_template"]
+                if gpa_dat["gather_dir"]!=None and gpa_dat["gather_dir"]!="None":
+                    zmap_nii     = gather(zmap_nii,     "seed_%i_%s.nii.gz"%(cl["seed"],cl["body"]), info, True)
+                    template_nii = gather(template_nii, "fsleyes_template.nii.gz",           info)
+                    
+                    
+                cmd = "fsleyes %s --name MNI152_T1 --brightness 40 %s -n \"seed %i %s %s\" --cmap red-yellow"%(template_nii,zmap_nii,cl["seed"],cl["seed.label"],cl["statname"])
                 htmlout+="<p style=\"font-size: small;\">%s</p>"%cmd
 
                 # Print the list of clusters and some data associated with it

@@ -1,3 +1,6 @@
+import os
+import subprocess
+import numpy as np
 
 
 
@@ -45,4 +48,34 @@ def make_lut(colour,greyscale=.7):
 
 
 
+pj = os.path.join
+
+
+def gather(filename,target,info,check_not_exist=False):
+    """
+    Gather a particular filename, i.e. copy it away from its
+    embedded location somewhere deep in the results folder,
+    and put it somewhere with a reasonable filename.
+
+    if check_not_exist we will check whether the target file does not already
+    exist.
+    """
+    if not os.path.exists(info["gather_dir"]):
+        os.makedirs(info["gather_dir"])
+
+    assert os.path.exists(filename)
+
+    target = pj(info["gather_dir"],target)
+    if check_not_exist:
+        if os.path.exists(target):
+            print("Error -- gather target %s already exists"%target)
+            assert False
+        
+        
+    print("%s -> %s"%(filename,target))
+    
+    cmd = ["cp",filename,target]
+    subprocess.call(cmd)
+
+    return target
 

@@ -53,6 +53,7 @@ Then run `python sca_nipype_reporter.py sca_specs.yaml`.
 - [x] Include aux files
 - [ ] Fix size of large image for each seed
 - [ ] Add error bars to bar plots?
+- [ ] Gathering output as well?
 
 
 

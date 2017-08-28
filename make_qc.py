@@ -11,6 +11,7 @@ import os
 import pandas as pd
 import subprocess
 
+from aux import *
 
 pj = os.path.join
 
@@ -36,26 +37,6 @@ def get_path(pathname,info):
     #TODO 
     return template
 
-
-
-def gather(filename,target,info):
-    """
-    Gather a particular filename, i.e. copy it away from its
-    embedded location somewhere deep in the results folder,
-    and put it somewhere with a reasonable filename.
-    """
-    if not os.path.exists(info["gather_dir"]):
-        os.makedirs(info["gather_dir"])
-
-    assert os.path.exists(filename)
-        
-    target = pj(info["gather_dir"],target)
-    print("%s -> %s"%(filename,target))
-    
-    cmd = ["cp",filename,target]
-    subprocess.call(cmd)
-
-    return target
 
 
 
