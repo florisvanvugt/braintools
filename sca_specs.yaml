@@ -93,10 +93,17 @@ template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz"
 fsleyes_template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_1mm.nii.gz"
 
 # The converted image width (as will be shown in the html)
-cluster_image_width : 1000 # 750
+cluster_image_width : 750 # 750
 
 # The converted image width (as will be shown in the html)
-image_width : 1000 # 750
+zmap_display_width : 750 # 750
+
+# The width of the cluster image when rendering
+zmap_render_width : 2000 # 750
+
+
+# The width of a "trio" panel showing the axial, sagittal and coronal slice of the peak of a cluster
+trio_image_width : 650
 
 
 # Some additional files that will be included in the header of the report

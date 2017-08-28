@@ -30,6 +30,9 @@ Probably some things, yes.
 
 This worked with Python 2.7 and Nipype 0.13.1. Need Seaborn as well. 
 
+You also need Imagemagick installed (being able to run `convert` on Linux).
+
+
 
 ### Usage
 
@@ -44,10 +47,10 @@ Then run `python sca_nipype_reporter.py sca_specs.yaml`.
 - [x] Subject names in the scatter plots
 - [ ] Actually check correctness of scatter plots
 - [x] Seed names in overviews
-- [ ] Update fsleyes run command file names
-- [ ] If you enter None as a variable then just plot all points on the same value on the x axis.
+- [x] Update fsleyes run command file names
+- [x] If you enter None as a variable then just plot all points on the same value on the x axis.
 - [ ] Plot design matrix?
-- [ ] Include aux files
+- [x] Include aux files
 - [ ] Fix size of large image for each seed
 - [ ] Add error bars to bar plots?
 

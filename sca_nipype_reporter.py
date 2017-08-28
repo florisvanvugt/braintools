@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 import yaml
 import colorsys
 
+from aux import *
+
 
 USE_SEABORN = True
 
@@ -51,7 +53,7 @@ def encode_size(img,width=1000):
 
     assert os.path.exists(img)
 
-    img_output = "/tmp/%s.png"%(random_string(10))
+    img_output = "/tmp/sca_%s.png"%(random_string(10))
     
     # Now convert the image back to a usable size
     cmd = ["convert","-resize",str(width),"-quality","9",
@@ -158,12 +160,13 @@ def make_zmap_rendering(thresh_stat_overlay,info):
     A base64-encoded string of the image
     """
 
-    image_width   = info["image_width"]
+    image_width   = info["zmap_display_width"]
+    render_width  = info["zmap_render_width"]
     RENDER_FACTOR = info["render_factor"]
     
-    print("Making zmap %s"%thresh_stat_overlay)
-    tmp_image     = "/tmp/_overlay.png"
-    img_output    = "/tmp/overlay.png"
+    #print("Making zmap %s"%thresh_stat_overlay)
+    tmp_image     = "/tmp/sca_overlay.png"
+    img_output    = "/tmp/sca_output_overlay.png"
 
     thresh_stat_overlay = os.path.abspath(thresh_stat_overlay)
     assert os.path.exists(thresh_stat_overlay)
@@ -171,10 +174,10 @@ def make_zmap_rendering(thresh_stat_overlay,info):
     # Then produce an image rendition of this overlay
     cmd = ["slicer",thresh_stat_overlay,
            #"-l",lut, --- TODO there is something wrong here with the look-up table for colours
-           "-S",str(RENDER_FACTOR),str(image_width*RENDER_FACTOR),
+           "-S",str(RENDER_FACTOR),str(render_width),
            tmp_image
     ]
-    print(" ".join(cmd))
+    #print(" ".join(cmd))
     subprocess.call(cmd)
 
 
@@ -185,7 +188,7 @@ def make_zmap_rendering(thresh_stat_overlay,info):
 
 
 
-def make_cluster_rendering(clusterfile,cluster_n,colour,info):
+def make_cluster_rendering(clusterfile,cluster_n,colour,clusterdata,info):
     """ 
     Makes a rendering of a particular cluster, overlaid on a template.
 
@@ -204,13 +207,13 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     render_width  = info["render_width"]
     RENDER_FACTOR = info["render_factor"]
     template      = info["template"]
-    lut = make_lut(colour,greyscale=.4)
+    lut = make_lut(colour,greyscale=.7)
     
     # Define some temporary files
-    cluster_only  = "/tmp/cluster_only.nii.gz"
-    overlay       = "/tmp/zstat_overlay.nii.gz" # file that will be created in this process
-    tmp_image     = "/tmp/tmp.png"              # image file, the actual output that we care about
-    overlay_image = "/tmp/cluster_overlay.png"  # image file, the actual output that we care about
+    cluster_only  = "/tmp/sca_cluster_only.nii.gz"
+    overlay       = "/tmp/sca_zstat_overlay.nii.gz" # file that will be created in this process
+    tmp_image     = "/tmp/sca_tmp.png"              # image file, the actual output that we care about
+    overlay_image = "/tmp/sca_cluster_overlay.png"  # image file, the actual output that we care about
 
     # Remove any previous files so that we don't accidentally produce the same figure
     subprocess.call(['rm','-f',overlay_image,overlay,cluster_only,tmp_image])
@@ -232,7 +235,7 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
 
     assert os.path.exists(overlay)
     
-    # Then produce an image rendition of this
+    # Then produce an image rendition of this (axials)
     cmd = ["slicer",overlay,
            #"-L",
            "-l",lut,
@@ -243,8 +246,17 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
 
     #print(" ".join(cmd))
     subprocess.call(cmd)
+    axials = encode_size(tmp_image,image_width)
 
-    return encode_size(tmp_image,image_width)
+    # Make a three-panel rendition image
+    trio = make_trio(overlay,
+                     (clusterdata["MAX X (vox)"],
+                      clusterdata["MAX Y (vox)"],
+                      clusterdata["MAX Z (vox)"]),
+                     info["trio_image_width"],lut)
+    
+    return {"axials":axials,
+            "trio":trio}
     
 
 
@@ -252,6 +264,76 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
 
 
 
+def make_trio(rendered,
+              coords,
+              width,
+              lutf):
+    """ 
+    Given a particular image, render it as an overlay on a particular
+    template, and then produce a three-panel image (sagittal,coronal,axial) slice
+    at particular (voxel) coordinates.
+    
+    Argument
+    rendered : a rendered nifty image (background + overlay)
+    coords : the voxel coordinates at which to plot the trio panel
+    width : the desired file width
+    lutf   : the lut file (colour lookup table)
+
+    Returns
+    image as base64-encoded string
+    """
+
+    # First produce an overlay and a corresponding colour lookup table
+    #lutf = make_lut((1.,0,0),.7)
+
+    # Temporary file to be created
+    #overlay = "/tmp/overlay.nii.gz"
+    
+    ## See e.g. https://faculty.washington.edu/madhyt/2016/12/10/180/
+    #cmd = ["overlay","0","0",template,"-a",
+    #       seed_nii,"1","1",#str(cluster_n-.001),str(cluster_n+.001),
+    #       overlay]
+    #print(" ".join(cmd))
+    #subprocess.call(cmd)
+
+
+    imgfile = "/tmp/sca_%s.png"%(random_string(10))
+    assert os.path.exists(rendered)
+    
+    # Then produce an image rendition of this
+    slicefiles = []
+    for section,direction in zip(coords,["x","y","z"]):
+        tmp_image = "/tmp/sca_section.png"
+        cmd = ["slicer",rendered,
+               #"-L",
+               "-l",lutf,
+               #"-A",str(image_width*RENDER_FACTOR),#"750",
+               #-S",str(RENDER_FACTOR),str(render_width),#"750",
+               "-%s"%direction,"-%i"%section, # note the minus sign: this is so that we get the slice number and not the slice ratio
+               tmp_image
+        ]
+        #print(" ".join(cmd))
+        subprocess.call(cmd)
+
+        # TODO: as label add the coordinate
+        sec_image = "/tmp/sca_section_%s.png"%direction
+        cmd = ["convert",tmp_image,
+               "-background","Khaki","label:vox.%s=%i"%(direction,section),
+               "+swap","-gravity","Center","-append",sec_image]
+        subprocess.call(cmd)
+
+        slicefiles.append(sec_image)
+    
+    # Now concatenate the images to a three-panel single figure (easier to deal with)
+    cmd = ["convert","+append"]+slicefiles+[imgfile]
+    #print(" ".join(cmd))
+    subprocess.call(cmd)
+
+    return encode_size(imgfile,width)
+    
+
+
+    
 
 
 
@@ -464,7 +546,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                         plotvals = thisev[ycol]
                         mn = np.mean(plotvals)
                         x = i+.5
-                        ax.bar(x,mn,width=.6,color=color,alpha=.3)
+                        ax.bar(x-.3,mn,width=.6,color=color,alpha=.3)
                         labels[nm]=x
                         i+=1
                 
@@ -666,14 +748,13 @@ if __name__=="__main__":
                 clustermask       = os.path.join(seed_dir,get_path("cluster_mask_file",info))
                 
                 bodyname     = "z%sstat%i"%(stattype,j)
-                
-                print(cluster_list_file,merged_file,rendered_nii)
 
+                print("%i %s %s"%(i,seed,bodyname))
+                
                 assert os.path.exists(thresh_zmap)
                 assert os.path.exists(cluster_list_file)
                 assert os.path.exists(merged_file)
                 assert os.path.exists(rendered_nii)
-
 
                 # Open the cluster listing
                 with open(cluster_list_file,'r') as f:
@@ -732,8 +813,12 @@ if True:
             # Then we can take the average from that mask for each of the volumes in the merged file, i.e. for each subject
             for cluster_n in range(cl["n.cluster"]):
 
+                cluster_tag = cluster_n+1 # the number of the cluster in the mask file etc.
+                
+                clinfo = cl["clustertab"].reset_index()
+                clusterdata = clinfo[ clinfo["Cluster Index"]==cluster_tag ].iloc[0] # Extract the data for just this cluster
 
-                clusterrender = make_cluster_rendering(cl["cluster.mask"],cluster_n+1,colours[cluster_n],info)
+                clusterrender = make_cluster_rendering(cl["cluster.mask"],cluster_tag,colours[cluster_n],clusterdata,info)
 
                 clsc = make_cluster_scatter(clustermaskf = cl["cluster.mask"],
                                             cluster_n    = cluster_n+1,
@@ -748,8 +833,9 @@ if True:
 
                 #clsc["cluster.rendering"]=clusterrender
 
-                cl["persubject"][cluster_n+1]={"cluster.rendering":clusterrender,
-                                               "accompany.plots":clsc}
+                cl["persubject"][cluster_n+1]={"axials"            :clusterrender['axials'],
+                                               "trio"              :clusterrender["trio"],
+                                               "accompany.plots"   :clsc}
 
 
 
@@ -871,9 +957,10 @@ if True:
                         
                     #print("<p>Cluster %i - subject values %s"%(cli,cl["persubject"][cli]))
                     htmlout+="<p><table><tr>"
-                    htmlout+="<td><img style=\"width : 600; height:auto\" src=\"data:image/png;base64,%s\" /></td>\n"%cl["persubject"][cli]["cluster.rendering"]
+                    htmlout+="<td><img style=\"height:auto\" src=\"data:image/png;base64,%s\" /></td>\n"%cl["persubject"][cli]["trio"]
                     for plot in cl["persubject"][cli]["accompany.plots"]:
                         htmlout+="<td><img src=\"data:image/png;base64,%s\" /></td>\n"%plot["png"]
+                    htmlout+="<td><img style=\"height:auto\" src=\"data:image/png;base64,%s\" /></td>\n"%cl["persubject"][cli]["axials"]
                     htmlout+="</tr></table>\n"
 
 
@@ -893,7 +980,6 @@ if True:
     htmlout+="</body></html>\n"
 
 
-
     
     outputfile = get_path("html_output",gpa_dat)
     print("\n\nWriting output to %s"%outputfile)
@@ -901,4 +987,11 @@ if True:
     fout = open(outputfile,'w')
     fout.write(htmlout)
     fout.close()
+    
+
+    
+    # Cleaning up temporary files
+    cmd = ['rm','-f',"/tmp/sca_*.png","/tmp/sca_*.nii.gz"]
+    subprocess.call(cmd)
+
     
