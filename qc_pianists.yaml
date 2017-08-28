@@ -1,0 +1,34 @@
+
+
+# The root directory of the analysis
+root_dir : "/brains/pianists/output/pipeline_pianists-3mm-ants"
+
+# The directory where we will gather the files, copying them out of their difficult-to-find locations
+# and copying them somewhere where they are all together
+gather_dir : "gather"
+
+# A file with a list of subjects
+subjects_file : "/brains/pianists/analyses/early_vs_late_vs_nonmus/subject_list_group_analysis_pianists_nonmusicians.txt"
+
+# Mean-functional image
+mean_func : "{subject}/mean_functional_in_anat/_scan_REST/REST_calc_tshift_resample_volreg_calc_tstat_flirt.nii.gz"
+
+# The brain anatomical (in the subject native space)
+anat_brain : "{subject}/anatomical_brain/T1_resample_calc.nii.gz"
+
+# The brain anatomical (in the standard space)
+anat_standard : "{subject}/mni_normalized_anatomical/transform_Warped.nii.gz"
+
+# A file that holds a summary of the motion parameters (one line per subject)
+motion_parameters : "{subject}/motion_params/_scan_REST/motion_parameters.txt"
+
+# The anatomical template
+template_skull_for_anat :  "//usr/share/fsl/5.0/data/standard/MNI152_T1_1mm.nii.gz"
+
+
+# The file we will output as a script
+script_file : "pianists-3mm-qc.sh"
+
+# Output CSV file where we will write a motion summary
+motion_file : "motion_summary.csv"
+

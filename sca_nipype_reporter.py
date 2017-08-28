@@ -469,7 +469,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                                 plotvals,'-o',color=color)
                         lastval = list(plotvals)[-1]
                         lastx   = labels[ list(dat[EV_name])[-1] ]
-                        ax.text(lastx,lastval,subj,fontsize=8,alpha=.5)
+                        ax.text(lastx,lastval,subj,fontsize=11,alpha=.5)
                     else: # plotting non-categorical data
                         plotvals = dat["--y--"]
                         ax.plot(dat[EV_name],plotvals,'o',color=color)
@@ -484,7 +484,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             else:
                 sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax,scatter_kws={'s':8})
                 for i,row in plottab.iterrows():
-                    ax.text(row[EV_name],row["--y--"],row[subj_id],fontsize=8,alpha=.5)
+                    ax.text(row[EV_name],row["--y--"],row[subj_id],fontsize=11,alpha=.5)
 
         # If the values cross zero, add a zero line
         minm,maxm= min(plottab["--y--"]),max(plottab["--y--"])
@@ -566,8 +566,6 @@ if __name__=="__main__":
     htmlout=""
     
     
-    print("Writing output to %s"%outputfile)
-
 
     basedir = startdir
     
@@ -698,6 +696,7 @@ if __name__=="__main__":
 
 
                 master_cluster_list.append({"seed"          :i+1,
+                                            "seed.label"    :info["seed"],
                                             "path"          :seed_dir,
                                             "body"          :bodyname,
                                             "stattype"      :stattype,
@@ -817,12 +816,12 @@ if True:
         else:
             nclust = str(cl["n.cluster"])
             render = "<a href=\"#%s\">render</a>"%cl["rendered"]
-        htmlout+="<tr><td>%i</td><td>%s</td><td><a href=\"%s\">clusters</a></td><td>%s</td><td>%s</td></tr>\n"%(cl["seed"],
-                                                                                                                #cl["stat"],
-                                                                                                                nm,
-                                                                                                                cl["cluster.file"],
-                                                                                                                nclust,
-                                                                                                                render)
+        htmlout+="<tr><td>%i %s</td><td>%s</td><td><a href=\"%s\">clusters</a></td><td>%s</td><td>%s</td></tr>\n"%(cl["seed"],
+                                                                                                                   cl["seed.label"],
+                                                                                                                   nm,
+                                                                                                                   cl["cluster.file"],
+                                                                                                                   nclust,
+                                                                                                                   render)
     htmlout+="</table>"
 
 
@@ -836,7 +835,7 @@ if True:
 
 
             if cl["n.cluster"]>0:
-                htmlout+="<h3><a name=\"%s\">Seed %i stat %s</a></h3>"%(rendered_filename,cl["seed"],cl["statname"])
+                htmlout+="<h3><a name=\"%s\">Seed %i %s stat %s</a></h3>"%(rendered_filename,cl["seed"],cl["seed.label"],cl["statname"])
 
                 #print("<p><img src=\"%s\" /></p>\n"%r)
 
@@ -885,6 +884,7 @@ if True:
     htmlout+="</body></html>\n"
 
 
+    print("\n\nWriting output to %s"%outputfile)
     # Now actually write the output to file
     fout = open(outputfile,'w')
     fout.write(htmlout)
