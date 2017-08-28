@@ -9,12 +9,10 @@ import pandas as pd
 import base64
 import subprocess
 import sys
+import string
+import random
 
-#py3
-#import io
-#StringIO = io.StringIO # py3
 
-#py2
 import StringIO # py2
 
 import numpy as np
@@ -22,6 +20,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import yaml
+import colorsys
 
 
 USE_SEABORN = True
@@ -40,16 +39,29 @@ FULL_LIST = True
 SHOW_BEHAV_TABLE = False
 
 
-# The factor to use when rendering. When we make a rendering, we usually
-# show all axial slices, except if the render factor is set here, in which
-# case we show only 1 in every RENDER_FACTOR images. We also make the output
-# image larger at first and then use imagemagick to scale it down.
-#RENDER_FACTOR = 3
-#TEMPLATE = "/usr/share/fsl/5.0/data/standard/MNI152_T1_1mm_brain.nii.gz"
+def random_string(length):
+    pool = string.letters + string.digits
+    return ''.join(random.choice(pool) for i in xrange(length))
 
-#RENDER_FACTOR = 1
-#TEMPLATE = "/usr/share/fsl/5.0/data/standard/MNI152_T1_3mm_brain.nii.gz"
 
+def encode_size(img,width=1000):
+    """ 
+    Resize the image in question and return a string-encoded version of it. 
+    """
+
+    assert os.path.exists(img)
+
+    img_output = "/tmp/%s.png"%(random_string(10))
+    
+    # Now convert the image back to a usable size
+    cmd = ["convert","-resize",str(width),"-quality","9",
+           img,img_output]
+    subprocess.call(cmd)
+
+    with open(img_output, "rb") as f:
+        contents = base64.b64encode(f.read())
+    
+    return contents
 
 
 
@@ -62,20 +74,12 @@ def get_path(pathname,info):
     template = info[pathname]
     for ky in info:
         template = template.replace('{%s}'%ky,str(info[ky]))
-    #TODO 
     return template
 
 
 
 
 
-
-
-
-
-
-
-import colorsys
 
 def get_colors(num_colors):
     """ Returns a specified number of colours, maximally spaced in the colour cone.
@@ -86,7 +90,7 @@ def get_colors(num_colors):
     colors=[]
     for i in np.arange(0., 360., 360. / num_colors):
         hue = i/360.
-        lightness = (30 + np.random.rand() * 10)/100.
+        lightness = (25 + np.random.rand() * 10)/100.
         saturation = (90 + np.random.rand() * 10)/100.
         colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
     return colors
@@ -173,13 +177,9 @@ def make_zmap_rendering(thresh_stat_overlay,info):
     print(" ".join(cmd))
     subprocess.call(cmd)
 
-    # Now convert the image back to a usable size
-    cmd = ["convert","-resize",str(image_width),"-quality","9",
-           tmp_image,img_output]
-    subprocess.call(cmd)
 
-    return base64.b64encode(open(img_output, "rb").read())
-
+    return encode_size(tmp_image,image_width)
+    
     
 
 
@@ -244,15 +244,8 @@ def make_cluster_rendering(clusterfile,cluster_n,colour,info):
     #print(" ".join(cmd))
     subprocess.call(cmd)
 
-    # Now convert the image back to a usable size
-    cmd = ["convert","-resize",str(image_width),
-           tmp_image,overlay_image]
-    subprocess.call(cmd)
-
-
-    return base64.b64encode(open(overlay_image, "rb").read())
-
-
+    return encode_size(tmp_image,image_width)
+    
 
 
 
@@ -329,6 +322,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         assert col not in tab.columns # make sure the columns in the design_rows file don't overlap with those in the design matrix
         tab[col]=info["design_rows"][col]
 
+    subj_id = info["subject_id_column"]
 
     contrast_mat  = info["contrast_mat"]
     #contrast_i = stat_index # TODO -- different for f tests
@@ -365,56 +359,72 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
         # Make a copy of the cluster file we have so far
         plottab = tab.copy()
-        
+
+
+        #
+        # Y-AXIS
+        # First let's see what is supposed to be plotted on the y axis
+        #
+        dep_name = plotdef["y"] # the dependent variable
+        ycol = "--y--"
+
+
+        # Apply the contrast to the mean cluster values
+        if dep_name==None or dep_name=="None":
+            plottab[ycol] = plottab["mean"] # kind of "evaluate" the contrast for this cluster
+            ylabel = "FC"
+
+        else:
+
+            # Here we are asked to put on the y axis the output of a column of the design matrix.
+            # By default, we will aggregate across subjects and within each subject compute the "value of the contrast"
+            # i.e. apply the contrast. Let's have a look.
+
+            plottab["--evald--"] = plottab["mean"]*plottab[dep_name] # kind of "evaluate" the design matrix column for this cluster
+            aggr = plottab.groupby([subj_id]).agg({'--evald--':np.sum}).reset_index() # collapse across multiple values per subject, taking the sum of the evaluated column (because we are evaluating the design column here)
+            #print(aggr)
+            aggr[ycol]=aggr["--evald--"]# ["mean"]?
+            #aggr = pd.merge(aggr,info["pheno"],how='left',on=subj_id)
+            plottab = aggr
+            ylabel = "FC %s"%dep_name
+
+
+
+        #
+        # X-AXIS
         # The variable that is supposed to go on the x axis
-        EV_name = plotdef["x"]
+        #
+        xvar = plotdef["x"]
+
+        # Check whether the variable is categorical
+        is_categorical = xvar in info["ev_selections"].get("categorical",[])
+
+        if xvar == "None" or xvar==None:
+            xvar = "__1__"
+            plottab[xvar]="null" # just create an artificial single-factor
+            #print(plottab)
+            is_categorical = True # pretending that this is categorical will make for a nice list
 
         # Make sure we have access to this column
-        if EV_name in info["design_rows"].columns:
-            pass
+        elif xvar in info["design_rows"].columns:
+            pass # nothing to be done
 
             
-        elif EV_name in info["pheno"].columns:
+        elif xvar in info["pheno"].columns:
 
             # Merge the column into question onto the cluster result file
-            subj_id = info["subject_id_column"]
-            cols = [subj_id,EV_name]
+            cols = [subj_id,xvar]
             plottab = pd.merge(plottab,info["pheno"][cols],how='left',on=subj_id)
 
         else:
-            print("# Error ! Not sure where to find column '%s'#"%EV_name)
+            print("# Error ! Not sure where to find column '%s'#"%xvar)
 
-        # Check whether the variable is categorical
-        is_categorical = EV_name in info["ev_selections"].get("categorical",[])
 
         subj_id = info["subject_id_column"]
 
 
 
         # Now determine what should go on the y axis
-        
-        dep_name = plotdef["y"] # the dependent variable
-
-        # Apply the contrast to the mean cluster values
-        if dep_name==None or dep_name=="None":
-            plottab["--y--"] = plottab["mean"] # kind of "evaluate" the contrast for this cluster
-            ylabel = "FC"
-
-        else:
-            # Now we should do a merge step: since this comes from the pheno type file we know
-            # we have only one value per subject. So plotting the multiple values per subject
-            # doesn't really make sense (I think). So what we'll do is collapse across multiple
-            # instances per subject. What do we collapse? This is determined by the contrast.
-
-            plottab["--evald--"] = plottab["mean"]*plottab[dep_name] # kind of "evaluate" the design matrix column for this cluster
-            aggr = plottab.groupby([subj_id]).agg({'--evald--':np.sum}).reset_index() # collapse across multiple values per subject, taking the sum of the evaluated column (because we are evaluating the design column here)
-            #print(aggr)
-            aggr["--y--"]=aggr["--evald--"]# ["mean"]?
-            aggr = pd.merge(aggr,info["pheno"],how='left',on=subj_id)
-            plottab = aggr
-            ylabel = "FC %s"%dep_name
-
-
         
             
         # Collapse across subjects, maybe?
@@ -426,7 +436,6 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
 
 
-        #df = pd.DataFrame(tab)
         plottab = plottab.reset_index()
         #print(plottab)
 
@@ -441,7 +450,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
         if not USE_SEABORN: # not sure if this works though
             fig = plt.figure(figsize=(7,7))
             ax = fig.add_subplot(111)
-            ax.plot(plottab[EV_name],plottab["--y--"],'o',color=color)
+            ax.plot(plottab[xvar],plottab[ycol],'o',color=color)
         else:
 
             fig = plt.figure(figsize=(6,6))
@@ -449,31 +458,29 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
             if is_categorical:
                 labels = {}
 
-                # TODO -- connect the lines by subject?
-                # TODO -- probably do this grouping only if it's categorical
-
                 if is_categorical: # plot a bar
                     i=0
-                    for nm,thisev in plottab.groupby(EV_name):
-                        plotvals = thisev["--y--"]
+                    for nm,thisev in plottab.groupby(xvar):
+                        plotvals = thisev[ycol]
                         mn = np.mean(plotvals)
-                        ax.bar(i+.1,mn,color=color,alpha=.3)
-                        labels[nm]=i+.5
+                        x = i+.5
+                        ax.bar(x,mn,width=.6,color=color,alpha=.3)
+                        labels[nm]=x
                         i+=1
                 
                 for subj,dat in plottab.groupby(subj_id):
 
                     if is_categorical:
-                        plotvals = dat["--y--"]
-                        ax.plot([labels[nm] for nm in dat[EV_name]],
+                        plotvals = dat[ycol]
+                        ax.plot([labels[nm] for nm in dat[xvar]],
                                 plotvals,'-o',color=color)
                         lastval = list(plotvals)[-1]
-                        lastx   = labels[ list(dat[EV_name])[-1] ]
+                        lastx   = labels[ list(dat[xvar])[-1] ]
                         ax.text(lastx,lastval,subj,fontsize=11,alpha=.5)
                     else: # plotting non-categorical data
-                        plotvals = dat["--y--"]
-                        ax.plot(dat[EV_name],plotvals,'o',color=color)
-                        ax.text(dat[EV_name],plotvals,[subj],fontsize=11,alpha=.5)
+                        plotvals = dat[ycol]
+                        ax.plot(dat[xvar],plotvals,'o',color=color)
+                        ax.text(dat[xvar],plotvals,[subj],fontsize=11,alpha=.5)
                         
                 if is_categorical:
                     lbls = list(labels.keys())
@@ -482,28 +489,26 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
                     ax.set_xlim(0,len(lbls))
 
             else:
-                sns.regplot(plottab[EV_name],plottab["--y--"],color=color,ax=ax,scatter_kws={'s':8})
+                sns.regplot(plottab[xvar],plottab[ycol],color=color,ax=ax,scatter_kws={'s':38})
                 for i,row in plottab.iterrows():
-                    ax.text(row[EV_name],row["--y--"],row[subj_id],fontsize=11,alpha=.5)
+                    ax.text(row[xvar],row[ycol],row[subj_id],fontsize=11,alpha=.5)
 
         # If the values cross zero, add a zero line
-        minm,maxm= min(plottab["--y--"]),max(plottab["--y--"])
-        # TODO -- fix below
-        #if np.sign(minm)!=np.sign(maxm):
-        #    plt.plot(tab[EV_name],[0]*len(tab[EV_name]),'-',color="gray",alpha=.5)
-
-        #for i,row in tab.iterrows():
-        #    ax.text(row[EV_name],row["mean"],row[info["pheno_subject_column"]],fontsize=8,alpha=.5)
-        # TODO -- fix
+        minm,maxm= min(plottab[ycol]),max(plottab[ycol])
+        if np.sign(minm)!=np.sign(maxm):
+            ax.axhline(y=0,color="gray",alpha=.5)
 
         sns.despine(offset=5)
         ax.set_title(label)
-        ax.set_xlabel(EV_name)
+        ax.set_xlabel(xvar)
         ax.set_ylabel(ylabel)
         plt.tight_layout()
-        fig.savefig('/tmp/sca.png',dpi=75)
+        plotf = '/tmp/sca.png'
+        fig.savefig(plotf,dpi=75)
         plt.close()
-        encoded = base64.b64encode(open('/tmp/sca.png', "rb").read())
+        
+        encoded = encode_size(plotf,info["accompany_plot_width"])
+        #encoded = base64.b64encode(open('/tmp/sca.png', "rb").read())
 
         returnplots.append({'table':tab,'png':encoded})  #,"cluster.rendering":clusterrender})
         
@@ -557,17 +562,9 @@ if __name__=="__main__":
     gpa_dat["pheno"]=pd.DataFrame.from_csv(phenofile).reset_index()
 
     
-    # This is the file that we will write our html to
-    outputfile = os.path.join(gpa_dat["output_dir"],"sca_report.html")
-    #if outputfile.endswith("/"):
-    #    outputfile=outputfile[:-1]
-    #outputfile+=".html"
 
+    # The string that will hold the HTML output
     htmlout=""
-    
-    
-
-    basedir = startdir
     
 
 
@@ -662,6 +659,7 @@ if __name__=="__main__":
                 info["contrast"]  =j
                 info["contrast+1"]=j+1
 
+                thresh_zmap       = os.path.join(seed_dir,get_path("thresholded_zmap",info))
                 cluster_list_file = os.path.join(seed_dir,get_path("cluster_list_file",info))
                 merged_file       = os.path.join(seed_dir,get_path("merged_file",info))
                 rendered_nii      = os.path.join(seed_dir,get_path("rendered_nii",info))
@@ -670,7 +668,8 @@ if __name__=="__main__":
                 bodyname     = "z%sstat%i"%(stattype,j)
                 
                 print(cluster_list_file,merged_file,rendered_nii)
-                                
+
+                assert os.path.exists(thresh_zmap)
                 assert os.path.exists(cluster_list_file)
                 assert os.path.exists(merged_file)
                 assert os.path.exists(rendered_nii)
@@ -697,7 +696,7 @@ if __name__=="__main__":
 
                 master_cluster_list.append({"seed"          :i+1,
                                             "seed.label"    :info["seed"],
-                                            "path"          :seed_dir,
+                                            "thresh_zmap"   :thresh_zmap,
                                             "body"          :bodyname,
                                             "stattype"      :stattype,
                                             "n"             :j,
@@ -705,7 +704,7 @@ if __name__=="__main__":
                                             "cluster.file"  :cluster_list_file,
                                             "cluster.mask"  :clustermask,
                                             "n.cluster"     :len(lns)-1,
-                                            "rendered"      :rendered_nii,
+                                            "rendered"      :os.path.abspath(rendered_nii),
                                             "rendered_img"  :renderedimg,
                                             "clustertab"    :clustertab,
                                             "merged.file"   :merged_file,
@@ -799,10 +798,19 @@ if True:
 
 
 
-
-
-
     htmlout+="<h1>%s</h1>"%analysis_title
+
+
+    # Include auxiliary files
+    for auxf in gpa_dat["aux_files"]:
+        assert os.path.exists(auxf)
+        if auxf.endswith('.png'):
+            img_content = base64.b64encode(open(auxf, "rb").read())
+            htmlout+="<p><img src=\"data:image/png;base64,%s\" /></p>"%img_content
+        else:
+            print("### WARNING: not sure what to do with aux file %s ###"%auxf)
+
+
     htmlout+="<h1>Cluster list</h1>"
     htmlout+="<table id=\"seedresults\">"
     htmlout+="<tr><th>Seed</th><th>Stat</th><th>Cluster file</th><th># clust</th><th>Render</th></tr>\n"
@@ -843,9 +851,9 @@ if True:
                 htmlout+="<p><img src=\"data:image/png;base64,%s\" /></p>"%cl["rendered_img"]
 
 
-                fullp = "%s/stats/threshold/thresh_%s.nii.gz"%(cl["path"],cl["body"])
+                #fullp = "%s/stats/threshold/thresh_%s.nii.gz"%(cl["path"],cl["body"])
                 #fullp = "%s/%s/rendered/thresh_%s_overlay.nii.gz"%(cwd,cl["path"],cl["body"])
-                cmd = "fsleyes /usr/share/fsl/5.0/data/standard/MNI152_T1_1mm.nii.gz --name MNI152_T1_1mm --brightness 40 %s -n \"seed %i %s\" --cmap red-yellow"%(fullp,cl["seed"],cl["statname"])
+                cmd = "fsleyes %s --name MNI152_T1 --brightness 40 %s -n \"seed %i %s %s\" --cmap red-yellow"%(gpa_dat["fsleyes_template"],cl["thresh_zmap"],cl["seed"],cl["seed.label"],cl["statname"])
                 htmlout+="<p style=\"font-size: small;\">%s</p>"%cmd
 
                 # Print the list of clusters and some data associated with it
@@ -863,9 +871,10 @@ if True:
                         
                     #print("<p>Cluster %i - subject values %s"%(cli,cl["persubject"][cli]))
                     htmlout+="<p><table><tr>"
+                    htmlout+="<td><img style=\"width : 600; height:auto\" src=\"data:image/png;base64,%s\" /></td>\n"%cl["persubject"][cli]["cluster.rendering"]
                     for plot in cl["persubject"][cli]["accompany.plots"]:
                         htmlout+="<td><img src=\"data:image/png;base64,%s\" /></td>\n"%plot["png"]
-                    htmlout+="<td><img style=\"width : 600; height:auto\" src=\"data:image/png;base64,%s\" /></td></tr></table>\n"%cl["persubject"][cli]["cluster.rendering"]
+                    htmlout+="</tr></table>\n"
 
 
                 htmlout+="<p style=\"padding:50px\" />" # add a little space to clarify
@@ -884,6 +893,9 @@ if True:
     htmlout+="</body></html>\n"
 
 
+
+    
+    outputfile = get_path("html_output",gpa_dat)
     print("\n\nWriting output to %s"%outputfile)
     # Now actually write the output to file
     fout = open(outputfile,'w')

@@ -3,7 +3,8 @@
 # The root directory where your data files are (all paths are assumed to be relative to this folder)
 output_dir : "/brains/audiomotor.mrs/analysis/cpac/modelspec/output"
 
-model_name : "Audiomotor MRS"
+# The name of this model / analysis
+model_name : "AudiomotorMRS"
 
 # The seeds in question
 seeds : ["M1h.L","M1h.R","A1.L","A1.R","SMA.L"] #[0,1,2,3,4]
@@ -46,23 +47,19 @@ subject_id_column : "subject"
 # or from the design_rows_file.
 # The "y" key determines what regressor we show on the y axis, where None means showing just the value of the cluster
 cluster_accompany_plots : 
-  - {"x":"timepoint",   "y":None}
-  - {"x":"post_min_pre","y":"post_min_pre_regr"}
+  - {"x":"timepoint",   "y":None}  # if y==None we will plot the raw connectivity values of the cluster
+  - {"x":"post_min_pre","y":"post_min_pre_regr" } # plot the behavioral learning change vs. the post-pre FC output
+  - {"x":None,          "y":"post_min_pre_regr" }
 
 
+accompany_plot_width : 300 # the width of accompanying plots
   
-# Which pheno/design_rows column to plot for which contrast
-contrast2regr : {
-  "post_min_pre+":"timepoint",
-  "post_min_pre-":"timepoint",
-  "behav-":"post_min_pre",
-  "behav+":"post_min_pre",
-  #"
-} #"post_min_pre"}
+
+seed_dir : "seed_{seed_n}" # the base directory for seeds
 
 
-seed_dir : "seed_{seed_n}"
-
+# The file that contains the thresholded z-map for each contrast
+thresholded_zmap : "stats/threshold/_cluster{contrast}/thresh_zstat{contrast+1}.nii.gz"
 
 # The file that contains the listing of significant clusters for this seed
 cluster_list_file : "stats/clusterMap/_cluster{contrast}/cluster_zstat{contrast+1}.txt"
@@ -89,7 +86,11 @@ render_factor : 1
 # The width of the slicer image
 render_width : 1500 
 
+# The template to which everything is coregistered
 template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz"
+
+# The template to use in the calls to fsleyes (this can be higher resolution because FSLeyes can deal with overlays of various resolution)
+fsleyes_template : "/usr/share/fsl/5.0/data/standard/MNI152_T1_1mm.nii.gz"
 
 # The converted image width (as will be shown in the html)
 cluster_image_width : 1000 # 750
@@ -97,4 +98,11 @@ cluster_image_width : 1000 # 750
 # The converted image width (as will be shown in the html)
 image_width : 1000 # 750
 
+
+# Some additional files that will be included in the header of the report
+aux_files : ["/brains/audiomotor.mrs/analysis/cpac/seed_regions/seeds.png"]
+
+
+# The HTML output file
+html_output : "sca_{model_name}.html"
 

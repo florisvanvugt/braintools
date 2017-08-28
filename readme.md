@@ -46,6 +46,10 @@ Then run `python sca_nipype_reporter.py sca_specs.yaml`.
 - [x] Seed names in overviews
 - [ ] Update fsleyes run command file names
 - [ ] If you enter None as a variable then just plot all points on the same value on the x axis.
+- [ ] Plot design matrix?
+- [ ] Include aux files
+- [ ] Fix size of large image for each seed
+- [ ] Add error bars to bar plots?
 
 
 
