@@ -101,49 +101,6 @@ def get_colors(num_colors):
 
 
 
-def make_lut(colour,greyscale=.7):
-    """ 
-    Make a look-up table for an overlay, with a particular colour in mind.
-    This is for FSL, and it basically makes a two-part colour scale, the first
-    part of which is a greyscale colour scale, and the second is a constant
-    colour (which will correspond to the colour of the overlay).
-
-    Arguments
-    colour : the colour that the overlay will get
-    greyscale : what the top of the greyscale will be. if this goes to 1.0 then the greyscale will go all the way to white.
-
-    Colours have to be coded as three-tuple from 0 to 1 (float).
-    
-    """
-
-    lut = "%!VEST-LUT\n"+\
-          "%%BeginInstance\n"+\
-          "<<\n"+\
-          "/SavedInstanceClassName /ClassLUT\n"+\
-          "/PseudoColorMinimum 0.00\n"+\
-          "/PseudoColorMaximum 1.00\n"+\
-          "/PseudoColorMinControl /Low\n"+\
-          "/PseudoColorMaxControl /High\n"+\
-          "/PseudoColormap [\n"
-
-    # Now make 2x100 rows of colours; first grey
-    # then the colour in question.
-    for i in np.linspace(0,greyscale,100):
-        lut += "<-color{%.05f,%.05f,%.05f}->\n"%(i,i,i)
-    for _ in range(100):
-        lut += "<-color{%.05f,%.05f,%.05f}->\n"%colour
-    lut += "]\n"+\
-           ">>\n"+\
-           "\n"+\
-           "%%EndInstance\n"+\
-           "%%EOF\n"
-
-    fname = '/tmp/lut.txt'
-    open(fname,'w').write(lut)
-    return fname
-
-
-
 
 
 
@@ -397,12 +354,7 @@ def make_cluster_scatter(clustermaskf,cluster_n,mergedf,stat_index,stat_name,is_
 
 
     #tab = {"subject":cl["subject.list"]}
-    tab = pd.DataFrame(info["design_mat"])
-    tab.columns = info["design_mat_columns"]
-
-    for col in info["design_rows"].columns:
-        assert col not in tab.columns # make sure the columns in the design_rows file don't overlap with those in the design matrix
-        tab[col]=info["design_rows"][col]
+    tab = info["design_matrix_expanded"].copy()
 
     subj_id = info["subject_id_column"]
 
@@ -667,6 +619,17 @@ if __name__=="__main__":
     gpa_dat["design_rows"] = pd.DataFrame.from_csv(gpa_dat["design_rows_file"]).reset_index()
 
 
+    tab = pd.DataFrame(gpa_dat["design_mat"])
+    tab.columns = gpa_dat["design_mat_columns"]
+
+    for col in gpa_dat["design_rows"].columns:
+        assert col not in tab.columns # make sure the columns in the design_rows file don't overlap with those in the design matrix
+        tab[col]=gpa_dat["design_rows"][col]
+
+    gpa_dat["design_matrix_expanded"]=tab
+
+    
+
     subject_list_file      = os.path.join(get_path("output_dir",gpa_dat),get_path("subject_list_file",gpa_dat))
     subjectl               = [ v.strip() for v in open(subject_list_file,'r').readlines() ]
 
@@ -919,6 +882,15 @@ if True:
     htmlout+="</table>"
 
 
+    # Include copy of design matrix
+    htmlout+="<h1>Design matrix</h1>\n"
+    htmlout+= gpa_dat["design_matrix_expanded"].to_html()
+    htmlout+= "<h2>Design matrix columns</h2>\n<ul>"
+    for c in gpa_dat["design_mat_columns"]:
+        htmlout+="<li>%s</li>\n"%c
+    htmlout+="</ul>\n\n"
+    
+    
 
     if FULL_LIST:
 

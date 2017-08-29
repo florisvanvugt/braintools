@@ -99,7 +99,7 @@ cluster_image_width : 750 # 750
 zmap_display_width : 1200 # 750
 
 # The width of the cluster image when rendering
-zmap_render_width : 1750 # 750
+zmap_render_width : 1200 # 750
 
 
 # The width of a "trio" panel showing the axial, sagittal and coronal slice of the peak of a cluster

@@ -49,11 +49,12 @@ Then run `python sca_nipype_reporter.py sca_specs.yaml`.
 - [x] Seed names in overviews
 - [x] Update fsleyes run command file names
 - [x] If you enter None as a variable then just plot all points on the same value on the x axis.
-- [ ] Plot design matrix?
+- [ ] Plot design matrix? At least I would say add it as a table, joined with pheno data
 - [x] Include aux files
 - [ ] Fix size of large image for each seed
 - [ ] Add error bars to bar plots?
-- [ ] Gathering output as well?
+- [x] Gathering output as well?
+- [ ] When gathering output files then keep track of whether we have already output that time before (not whether it already exists)
 
 
 
