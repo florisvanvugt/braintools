@@ -81,22 +81,34 @@ def create_sdc_workflow():
 
     # IMPORTANT WARNING: Until FSL release 5.0.9, topup up did not write any orientation information into the outputted nifti header files. The consequences of this omission range from minor to disastrous. Be sure you are using the latest release of FSL, or fix the orientation information in the nifti files after the fact.
 
-
-    # 1. Use fslmerge to combine the two se-epi images into one 4D file: fslmerge -t [output] [inputAP] [inputPA].
-    # So you end up with a single nifti where the first "timepoint" is the AP encoded image and the second "timepoint" is the PA encoded image.
+    
     combine = Node(name='list_ap_pa',interface=Function(input_names=['func_AP','func_PA'],
                                                         output_names=["func_AP_PA"],
                                                         function=combinef))
 
+
+    # Now each of the AP and PA may contain multiple volumes.
+    # Question is what to do with these, because we can use only a single volume
+    # when computing the field map.
+    # For now, let's take the time-average and use that as single-volume input to topup,
+    # hoping to increase SNR perhaps.
+    timeavg = MapNode(interface=fsl.MeanImage(dimension="T"),name='time_avg',iterfield=['in_file'])
+    
+
+    # 1. Use fslmerge to combine the two se-epi images into one 4D file: fslmerge -t [output] [inputAP] [inputPA].
+    # So you end up with a single nifti where the first "timepoint" is the AP encoded image and the second "timepoint" is the PA encoded image.
+
+    
     merger = Node(Merge(),
                   name='merge_ap_pa')
     merger.inputs.output_type="NIFTI_GZ"
     merger.inputs.dimension = "t"
 
-    sdcwf.connect([ (inputnode, combine,     [('func_AP','func_AP'),
-                                              ('func_PA','func_PA')]),
-                    (combine,   merger,      [('func_AP_PA','in_files')]),
-                    (merger,    outputnode,  [('merged_file','func_AP_PA')]) ])
+    sdcwf.connect([ (inputnode, combine,     [('func_AP',       'func_AP'),
+                                              ('func_PA',       'func_PA')]),
+                    (combine,   timeavg,     [('func_AP_PA',    'in_file')]),
+                    (timeavg,   merger,      [('out_file',      'in_files')]),
+                    (merger,    outputnode,  [('merged_file',   'func_AP_PA')]) ])
 
     # 2. Create the "datain" file (see https://lcni.uoregon.edu/kb-articles/kb-0003)
     # Assumed to have been done once and for all (should be the same for all our EPIs)
@@ -156,8 +168,8 @@ master = Workflow(name='wrapper')
 
 sdcwf = create_sdc_workflow()
 
-sdcwf.inputs.inputnode.func_AP = os.path.abspath('TOPUPAP.nii.gz')
-sdcwf.inputs.inputnode.func_PA = os.path.abspath('TOPUPPA.nii.gz')
+sdcwf.inputs.inputnode.func_AP = os.path.abspath('20170209_103555SMSTOPUPAPs004a001.nii.gz')
+sdcwf.inputs.inputnode.func_PA = os.path.abspath('20170209_103555SMSTOPUPPAs005a001.nii.gz')
 sdcwf.inputs.inputnode.encoding_file = os.path.abspath('example_enc_file.txt')
 
 
