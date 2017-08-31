@@ -49,9 +49,10 @@ def create_sdc_workflow():
     Outputs:
     outputnode.func_AP_PA - The merged AP-PA EPI image
     outputnode.topup_out_corrected - The distortion-corrected AP & PA images
-    outputnode.topup_out_field - The field map
+    outputnode.topup_out_field - The field map (raw as it came from topup)
     outputnode.topup_out_fieldcoef - The field coefficients (from topup)
     outputnode.topup_out_logfile - The topup log file
+    outputnode.fieldmap_rads - The fieldmap (in radians/s)
     outputnode.fieldmap_mag - The fieldmap magnitude image
     outputnode.fieldmap_mag_brain - The brain-extracted fieldmap magnitude image
     """
@@ -70,6 +71,7 @@ def create_sdc_workflow():
                                                      'topup_out_fieldcoef',
                                                      'topup_out_logfile',
                                                      'topup_out_corrected',
+                                                     'fieldmap_rads',
                                                      'fieldmap_mag',
                                                      'fieldmap_mag_brain']),
                       name='outputnode')
@@ -167,12 +169,13 @@ master.connect([ (sdcwf, datasink, [ ('outputnode.func_AP_PA',          'func_AP
                                      ('outputnode.topup_out_field',     'topup_out_field'),
                                      ('outputnode.topup_out_fieldcoef', 'topup_out_fieldcoef'),
                                      ('outputnode.topup_out_logfile',   'topup_out_logfile'),
+                                     ('outputnode.fieldmap_rads',       'fieldmap_rads'),
                                      ('outputnode.fieldmap_mag',        'fieldmap_mag'),
                                      ('outputnode.fieldmap_mag_brain',  'fieldmap_mag_brain') ]) ])
 
 #sdcwf.run()
 master.write_graph(dotfilename='sdcwf',
-                  graph2use='orig', format='pdf', simple_form=True)
+                  graph2use='colored', format='pdf', simple_form=True)
 
 master.base_dir = "sdcwf_work"
 

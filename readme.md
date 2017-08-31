@@ -1,6 +1,16 @@
 
 # Various brain-imaging related tools
 
+
+## Topup-Pipeline (Nipype) for Susceptibility Distortion Correction (SDC) using reverse-blip method
+
+Contained in `topup/reverse_blip_sdc.py`.
+
+Make sure you edit that file first to point it to your data.
+
+
+
+
 ## QC builder
 
 This takes an output tree of the subject-level analysis (probably from Nipype) and returns a script that will run the usual bare-minimum quality control steps:

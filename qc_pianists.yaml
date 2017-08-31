@@ -11,7 +11,7 @@ gather_dir : "gather"
 subjects_file : "/brains/pianists/analyses/early_vs_late_vs_nonmus/subject_list_group_analysis_pianists_nonmusicians.txt"
 
 # Mean-functional image
-mean_func : "{subject}/mean_functional_in_anat/_scan_REST/REST_calc_tshift_resample_volreg_calc_tstat_flirt.nii.gz"
+sample_func : "{subject}/mean_functional_in_anat/_scan_REST/REST_calc_tshift_resample_volreg_calc_tstat_flirt.nii.gz"
 
 # The brain anatomical (in the subject native space)
 anat_brain : "{subject}/anatomical_brain/T1_resample_calc.nii.gz"

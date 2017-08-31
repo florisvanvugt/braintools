@@ -63,7 +63,9 @@ def gather(filename,target,info,check_not_exist=False):
     if not os.path.exists(info["gather_dir"]):
         os.makedirs(info["gather_dir"])
 
-    assert os.path.exists(filename)
+    if not os.path.exists(filename):
+        print("## Error: file %s does not exist ##"%filename)
+        assert False
 
     target = pj(info["gather_dir"],target)
     if check_not_exist:
@@ -78,4 +80,12 @@ def gather(filename,target,info,check_not_exist=False):
     subprocess.call(cmd)
 
     return target
+
+
+
+
+def exists(info,item):
+    """ Check whether a particular item exists and is not-None in the configuration dict. """
+    return item in info and info[item] not in [None,"","None"]
+    
 
