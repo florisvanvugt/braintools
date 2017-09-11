@@ -20,7 +20,8 @@ anat_brain : "{subject}/anatomical_brain/T1_resample_calc.nii.gz"
 anat_standard : "{subject}/mni_normalized_anatomical/transform_Warped.nii.gz"
 
 # A file that holds a summary of the motion parameters (one line per subject)
-motion_parameters : "{subject}/motion_params/_scan_REST/motion_parameters.txt"
+#motion_parameters : "{subject}/motion_params/_scan_REST/motion_parameters.txt"
+motion_parameters : ["{subject}/power_params/_scan_REST/_threshold_0.2/pow_params.txt","{subject}/motion_params/_scan_REST/motion_parameters.txt"]
 
 # The anatomical template
 template_skull_for_anat :  "//usr/share/fsl/5.0/data/standard/MNI152_T1_1mm.nii.gz"

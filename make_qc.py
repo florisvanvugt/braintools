@@ -32,12 +32,24 @@ def get_path(pathname,info):
     Given a path template, look for the appropriate items in the info dict
     to replace the placeholders with the actual values. 
     """
-    template = info[pathname]
+    if pathname in info:
+        template = info[pathname]
+    else:
+        template = pathname
     for ky in info:
         template = template.replace('{%s}'%ky,str(info[ky]))
     #TODO 
     return template
 
+
+
+def merge_dfs(dfs, i=0):
+    """ Merge a list of Pandas Data Frames """
+    #countfiles = len(dfs)
+    if len(dfs)==1:
+        return dfs[0]
+    else:
+        return dfs[0].merge(merge_dfs(dfs[1:]))
 
 
 
@@ -99,10 +111,15 @@ if True:
 
         ## Extract motion time series
         if exists(info,"motion_parameters"):
-            motion_file = pj(root,get_path('motion_parameters',info))
-            assert os.path.exists(motion_file)
-            motions.append(pd.DataFrame.from_csv(motion_file))
 
+            motpars = info['motion_parameters']
+            thismot = []
+            for m in motpars:
+                pth = get_path(m,info)
+                motion_file = pj(root,pth)
+                assert os.path.exists(motion_file)
+                thismot.append( pd.read_csv(motion_file,sep=",",index_col=False) )
+            motions.append( merge_dfs(thismot) )
 
     if len(motions)>0 and exists(info,"motion_file"):
         motions = pd.concat(motions)
